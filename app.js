@@ -16,6 +16,10 @@ app.use(function *(next){
   console.log('%s %s - %s', this.method, this.url, ms);
 });
 
+app.use(function *(next) {
+  this.body = 'fuck wechat js-sdk';
+  yield next;
+});
 
 router.get('/sign', function *(next) {
   const res = sign(this.query.jsApiTicket, this.query.localUrl);
@@ -23,9 +27,12 @@ router.get('/sign', function *(next) {
   yield next;
 });
 
+
+
 app
   .use(router.routes())
   .use(router.allowedMethods());
+
 app.listen(3000, () => {
     console.log('app is listing on 3000');
 });
