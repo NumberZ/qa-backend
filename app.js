@@ -8,6 +8,8 @@ const request = require('request');
 const sign = require('./sign.js');
 const uploadVoice = require('./uploadVoice');
 
+const coRequest = require('co-request');
+
 const router = new Router({
     prefix: '/api'
 });
@@ -17,8 +19,19 @@ const wxConfig = {
  secret: '8e5149e62d86e15f51080a4cd88e575b'
 }
 
+const qiniuUrl = 'http://7xo69p.com1.z0.glb.clouddn.com/f0ZhdfBuStBT1zwU3OUQUMDT9tQ=/';
 
-
+const reqVoice = (url, time) => {
+  return new Promise(reslove => {
+    request(url)
+    .on('response', (response) => {
+      response.on('end', () => {
+        reslove('end');
+      })
+    })
+    .pipe(fs.createWriteStream(`voice/${time}.amr`))
+  })
+}
 // logger
 app.use(function *(next){
   const start = new Date;
@@ -46,23 +59,21 @@ router.get('/sign', function *(next) {
 router.get('/uploadVoice', function *(next) {
   const serverId = this.query.serverId;
   const token = yield weixin.getToken(wxConfig.appId, wxConfig.secret);
-  console.log(`http://file.api.weixin.qq.com/cgi-bin/media/get?access_token=${token.access_token}&media_id=${serverId}`);
   const url = `http://file.api.weixin.qq.com/cgi-bin/media/get?access_token=${token.access_token}&media_id=${serverId}`;
   const time = String(new Date().getTime());
-  request(url)
-  .on('response', (response) => {
-    response.on('end', () => {
-      console.log('end');
-      uploadVoice(`${time}.amr`);
-    })
-  })
-  .pipe(fs.createWriteStream(`${time}.amr`))
-  // uploadVoice(res);
-  this.body = `http://file.api.weixin.qq.com/cgi-bin/media/get?access_token=${token.access_token}&media_id=${serverId}`;
-})
+  yield reqVoice(url, time);
+  const res = yield uploadVoice(`voice/${time}.amr`);
+  const d = yield coRequest('http://7xo69p.com1.z0.glb.clouddn.com/' + res.name + '?avinfo');
+  this.body = {
+    url: qiniuUrl + res.hash,
+    duration: Number.parseInt(JSON.parse(d.body).format.duration)
+  }
+});
 app
   .use(router.routes())
   .use(router.allowedMethods());
+
+
 
 app.listen(3000, () => {
     console.log('app is listing on 3000');

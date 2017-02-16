@@ -20,24 +20,22 @@ function uptoken(bucket, key) {
   return putPolicy.token();
 }
 
-
-
-function uploadBuff(body, key, uptoken) {
-  const extra = new qiniu.io.PutExtra();
-  qiniu.io.putFile(uptoken, key, body, extra, (err, ret) => {
-    if (!err) {
-      console.log(ret);
-    } else {
-      console.log(err);
-    }
-  })
-}
-
-
 function uploadFile(body) {
   const key = String(new Date().getTime()) + '.mp3';
   const token = uptoken(bucket, key);
-  return uploadBuff(body, key, token);
+  const extra = new qiniu.io.PutExtra();
+  return new Promise((reslove, reject) => {
+    qiniu.io.putFile(token, key, body, extra, (err, ret) => {
+      if (!err) {
+        reslove({
+          hash: ret.hash,
+          name: key
+        });
+      } else {
+        reject(err);
+      }
+    })
+  });
 }
 
 module.exports = uploadFile;
